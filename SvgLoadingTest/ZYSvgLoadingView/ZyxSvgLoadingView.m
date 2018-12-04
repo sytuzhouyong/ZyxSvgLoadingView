@@ -8,12 +8,19 @@
 #import "ZyxSvgLoadingView.h"
 #import "PocketSVG.h"
 
+
+@interface ZyxSvgLoadingView ()
+
+@property (nonatomic, copy) NSString *currentURLString;
+
+@end
+
 @implementation ZyxSvgLoadingView
 
 - (instancetype)initWithFrame:(CGRect)frame svgImageNamed:(NSString *)name size:(CGSize)size {
     if (self = [super initWithFrame:frame]) {
         self.clipsToBounds = YES;
-
+        
         SVGImageView *loadingView = [[SVGImageView alloc] initWithFrame:CGRectMake(0, 0, size.width, size.height)];
         [loadingView setSvgName:name];
         [self addSubview:loadingView];
@@ -45,37 +52,43 @@
     [self.loadingView setSvgName:svgImageName];
 }
 
-- (void)resetState {
+- (void)backToInitState {
     self.loadingView.alpha = 1;
     self.contentImageView.alpha = 0;
 }
 
 - (void)setImageWithURL:(NSURL *)url animated:(BOOL)animated {
+    if ([url.absoluteString isEqualToString:self.currentURLString] && self.contentImageView.image != nil) {
+        return;
+    }
+    
     self.contentImageView.image = nil;
     
     self.loadingView.alpha = 1;
     self.contentImageView.alpha = 0;
     
+//    __weak __typeof(&*self) weakSelf = self;
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         NSData *data = [NSData dataWithContentsOfURL:url];
         UIImage *image = nil;
         if ([url.pathExtension isEqualToString:@"gif"]) {
             // 这里调用gif的image函数，可以使用SDWebImage中的方法
-//            image = [UIImage animatedGIFWithData:data];
+            //            image = [UIImage animatedGIFWithData:data];
             image = [UIImage imageWithData:data];
         } else {
             image = [UIImage imageWithData:data];
         }
         dispatch_async(dispatch_get_main_queue(), ^{
-            [self showImage:image animated:animated];
+            [self showImage:image withURL:url animated:animated];
         });
     });
 }
 
-- (void)showImage:(UIImage *)image animated:(BOOL)animated {
+- (void)showImage:(UIImage *)image withURL:(NSURL *)url animated:(BOOL)animated {
+    self.currentURLString = url.absoluteString;
     self.contentImageView.image = image;
     if (animated) {
-        [UIView animateWithDuration:0.3 animations:^{
+        [UIView animateWithDuration:0.35 animations:^{
             self.loadingView.alpha = 0;
             self.contentImageView.alpha = 1;
         }];
@@ -97,13 +110,10 @@
     [self setImageWithURL:[NSURL URLWithString:url] animated:animated];
 }
 
-@end
+- (void)setImageNamed:(NSString *)imageName {
+    _contentImageView.image = [UIImage imageNamed:imageName];
+    _loadingView.alpha = 0;
+    _contentImageView.alpha = 1;
+}
 
-//static const void *svgImageViewKey = &svgImageViewKey;
-//- (UIView *)svgImageView {
-//    return objc_getAssociatedObject(self, svgImageViewKey);
-//}
-//
-//- (void)setSvgImageView:(SVGImageView *)view {
-//    objc_setAssociatedObject(self, svgImageViewKey, view, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-//}
+@end
